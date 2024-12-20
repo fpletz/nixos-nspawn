@@ -4,6 +4,10 @@
     useNetworkd = true;
     useDHCP = false;
     useHostResolvConf = false;
+    firewall.interfaces."host0" = {
+      allowedTCPPorts = [ 5353 ];
+      allowedUDPPorts = [ 5353 ];
+    };
   };
 
   # FIXME: logrotate currently fails because files in the nix store are not

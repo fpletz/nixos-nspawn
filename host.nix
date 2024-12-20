@@ -24,14 +24,20 @@ let
     };
   };
 
-  hostVdevNetwork = name: {
+  hostVdevNetwork = ifname: kind: {
     matchConfig = {
-      Kind = "veth";
-      Name = "ve-${name}";
+      Kind = kind;
+      Name = ifname;
     };
     networkConfig = {
       Address = lib.mkDefault [
-        "0.0.0.0/30"
+        "0.0.0.0/${
+          {
+            bridge = "27";
+            veth = "30";
+          }
+          .${kind}
+        }"
         "::/64"
       ];
       DHCPServer = lib.mkDefault true;
@@ -43,6 +49,9 @@ let
       IPv6AcceptRA = lib.mkDefault false;
       IPv6SendRA = lib.mkDefault true;
       MulticastDNS = true;
+    };
+    dhcpServerConfig = {
+      PersistLeases = false;
     };
   };
 
@@ -141,6 +150,15 @@ let
             '';
           };
 
+          zone = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = ''
+              Name of the zone to attach the veth on the host.
+              The Interface name will be prefixed with "vz-".
+            '';
+          };
+
           config.host = lib.mkOption {
             type = lib.types.nullOr lib.types.attrs;
             description = ''
@@ -173,10 +191,61 @@ let
             };
           };
         };
+
+        binds = lib.mkOption {
+          description = ''
+            Read-Write bind mounts from the host. Keys are paths in the container.
+          '';
+          default = { };
+          type = lib.types.attrsOf (
+            lib.types.submodule (
+              { ... }:
+              {
+                options = {
+                  hostPath = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = ''
+                      If not null, path on the host. Defaults to the same path as in the container.
+                    '';
+                  };
+                  options = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    default = [ ];
+                    description = ''
+                      Options to pass to the bind mount. See {manpage}`systemd-nspawn(1)` for possible values.
+                    '';
+                  };
+                  readOnly = lib.mkEnableOption "Mount read-only";
+                };
+              }
+            )
+          );
+          example = {
+            "/var/lib/example" = { };
+            "/var/lib/postgresql" = {
+              hostPath = "/mnt/data/postgresql";
+              options = [ "idmap" ];
+            };
+          };
+        };
       };
 
       config = {
         path = lib.mkIf options.config.isDefined config.config.system.build.toplevel;
+
+        binds = {
+          # The nix store must be available in the container to run binaries
+          "/nix/store" = {
+            hostPath = "/nix/store";
+            readOnly = true;
+            # FIXME: This should be mounted with an idmap so the nix store is
+            # owned by root. Setting an idmap fails for some reason, though.
+            # Due to this, logrotate currently fails because it requires
+            # configuration files to be owned by root. See container.nix.
+            options = [ "noidmap" ];
+          };
+        };
       };
     }
   );
@@ -220,7 +289,7 @@ in
   config = lib.mkIf (lib.length (lib.attrNames cfg.containers) > 0) {
     networking = {
       useNetworkd = true;
-      firewall.interfaces."ve-+" = {
+      firewall.interfaces = lib.genAttrs [ "ve-+" "vz-+" ] (_: {
         allowedTCPPorts = [
           5353 # MDNS
         ];
@@ -228,19 +297,31 @@ in
           67 # DHCP
           5353 # MDNS
         ];
-      };
+      });
     };
 
     systemd.network.networks = lib.flip lib.mapAttrs' cfg.containers (
       name: containerCfg:
-      lib.nameValuePair "10-ve-${name}" (
+      let
+        zone = containerCfg.network.veth.zone;
+        prefix = if zone == null then "ve" else "vz";
+        suffix = if zone == null then name else zone;
+        ifname = "${prefix}-${suffix}";
+        kind =
+          {
+            ve = "veth";
+            vz = "bridge";
+          }
+          .${prefix};
+      in
+      lib.nameValuePair "10-${ifname}" (
         let
           veth = containerCfg.network.veth;
           customConfig = if veth.config.host != null then veth.config.host else { };
         in
         lib.mkIf veth.enable (
           lib.mkMerge [
-            (hostVdevNetwork name)
+            (hostVdevNetwork ifname kind)
             customConfig
           ]
         )
@@ -261,22 +342,41 @@ in
           # NixOS config takes care of the timezone
           Timezone = "off";
         };
-        filesConfig = {
-          # This chowns the directory /var/lib/machines/${name} to ensure that
-          # always same UID/GID mapping range is used. Since the directory is
-          # empty the operation is fast and only happens on first boot.
-          PrivateUsersOwnership = "chown";
-          # The nix store must be available in the container to run binaries
-          # FIXME: This should be mounted with an idmap so the nix store is
-          # owned by root. Setting an idmap fails for some reason, though.
-          # Due to this, logrotate currently fails because it requires
-          # configuration files to be owned by root. See container.nix.
-          BindReadOnly = [ "/nix/store:/nix/store:noidmap" ];
-        };
+        filesConfig =
+          let
+            bindsToList =
+              {
+                readOnly ? false,
+              }:
+              lib.mapAttrsToList (
+                cpath: cfg:
+                let
+                  hostPath = if (cfg.hostPath != null) then cfg.hostPath else cpath;
+                  maybeOptions = lib.optionalString (
+                    lib.length cfg.options > 0
+                  ) ":${lib.concatStringsSep "," cfg.options}";
+                in
+                "${hostPath}:${cpath}${maybeOptions}"
+              ) (lib.filterAttrs (_: cfg: cfg.readOnly == readOnly) containerCfg.binds);
+          in
+          {
+            # This chowns the directory /var/lib/machines/${name} to ensure that
+            # always same UID/GID mapping range is used. Since the directory is
+            # empty the operation is fast and only happens on first boot.
+            PrivateUsersOwnership = "chown";
+
+            Bind = bindsToList { readOnly = false; };
+            BindReadOnly = bindsToList { readOnly = true; };
+          };
         networkConfig = {
           # XXX: Do want want to support host networking?
           Private = true;
           VirtualEthernet = containerCfg.network.veth.enable;
+          Zone =
+            let
+              zone = containerCfg.network.veth.zone;
+            in
+            lib.mkIf (zone != null) zone;
         };
       }
     );
@@ -284,7 +384,13 @@ in
     # We create this dummy image directory because systemd-nspawn fails otherwise.
     # Additionally, it persists the UID/GID mapping for user namespaces.
     systemd.tmpfiles.settings."10-nixos-nspawn" = lib.mapAttrs' (
-      name: _: lib.nameValuePair "/var/lib/machines/${name}" { d = { }; }
+      name: _:
+      lib.nameValuePair "/var/lib/machines/${name}" {
+        d = {
+          user = "524288";
+          group = "524288";
+        };
+      }
     ) cfg.containers;
 
     # Activate the container units with machines.target
