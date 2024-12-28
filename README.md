@@ -52,8 +52,8 @@ flag tools like `systemctl` or `journalctl` can access containers from the host.
 ## How to use this
 
 You can consume this flake and use the provided NixOS modules. See the `simple-container` check
-in `checks.nix` for an example. If you are not using flakes, the NixOS modules are located in
-`host.nix` and `container.nix`.
+in `checks/simple-container.nix` for an example. If you are not using flakes, the NixOS modules
+are located in `host.nix` and `container.nix`.
 
 ### Example: Simple Container
 
