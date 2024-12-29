@@ -14,4 +14,4 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
       - name: Run flake checks
-        run: nix develop -c nix-fast-build --no-nom --no-download
+        run: nix develop -c nix-fast-build --no-nom --no-download -j 2
