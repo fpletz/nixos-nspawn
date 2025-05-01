@@ -82,8 +82,6 @@
               '';
             };
 
-          formatter = pkgs.nixfmt-rfc-style;
-
           devShells.default = pkgs.mkShellNoCC {
             packages = [ pkgs.nix-fast-build ];
 
@@ -97,7 +95,7 @@
             projectRootFile = "flake.lock";
             programs = {
               deadnix.enable = true;
-              nixfmt-rfc-style.enable = true;
+              nixfmt.enable = true;
             };
           };
 
