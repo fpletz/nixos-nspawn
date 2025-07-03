@@ -23,7 +23,7 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v16
+        uses: DeterminateSystems/nix-installer-action@v18
       - name: Build
         run: nix build .#docs
       - name: Upload artifact
