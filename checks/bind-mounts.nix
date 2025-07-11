@@ -10,7 +10,6 @@
     };
     nixos-nspawn.containers = {
       database = {
-        autoStart = false;
         binds = {
           "/var/lib/postgresql" = {
             hostPath = "/srv/pgsql";
@@ -20,6 +19,16 @@
         config = {
           services.postgresql = {
             enable = true;
+            ensureDatabases = [ "nextcloud" ];
+            ensureUsers = [
+              {
+                name = "nextcloud";
+                ensureDBOwnership = true;
+              }
+            ];
+            initialScript = pkgs.writeText "init-sql" ''
+              alter user nextcloud with password 'fnord';
+            '';
           };
         };
         network.veth.zone = "internal";
@@ -45,7 +54,10 @@
             hostName = "test.local";
             config = {
               adminpassFile = "/srv/www/index.html";
-              #dbtype = "pgsql";
+              dbtype = "pgsql";
+              dbhost = "database";
+              dbuser = "nextcloud";
+              dbpassFile = "${pkgs.writeText "nextcloud-pass" "fnord"}";
             };
           };
         };
@@ -60,6 +72,6 @@
     host.wait_until_succeeds("ping -c 1 test")
     host.wait_until_succeeds("${lib.getExe pkgs.curl} -v http://test | grep fnord")
     # Check if Nextcloud works
-    host.wait_until_succeeds("${lib.getExe pkgs.curl} -Lv http://test.local | grep Login")
+    host.wait_until_succeeds("${lib.getExe pkgs.curl} -Lv http://test.local | grep \"CAN_INSTALL\"")
   '';
 }
