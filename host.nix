@@ -89,37 +89,36 @@ let
             merge =
               _loc: defs:
               (import "${toString pkgs.path}/nixos/lib/eval-config.nix" {
-                modules =
-                  [
-                    ./container.nix
-                    {
-                      networking.hostName = lib.mkDefault name;
-                      nixpkgs.hostPlatform = lib.mkDefault pkgs.system;
+                modules = [
+                  ./container.nix
+                  {
+                    networking.hostName = lib.mkDefault name;
+                    nixpkgs.hostPlatform = lib.mkDefault pkgs.system;
 
-                      networking.firewall.interfaces."host0" = {
-                        allowedTCPPorts = [
-                          5353 # MDNS
-                        ];
-                        allowedUDPPorts = [
-                          5353 # MDNS
-                        ];
-                      };
+                    networking.firewall.interfaces."host0" = {
+                      allowedTCPPorts = [
+                        5353 # MDNS
+                      ];
+                      allowedUDPPorts = [
+                        5353 # MDNS
+                      ];
+                    };
 
-                      systemd.network.networks."10-container-host0" =
-                        let
-                          veth = config.network.veth;
-                          customConfig = if veth.config.container != null then veth.config.container else { };
-                        in
-                        lib.mkIf veth.enable (
-                          lib.mkMerge [
-                            containerVdevNetwork
-                            customConfig
-                          ]
-                        );
-                    }
-                  ]
-                  ++ cfg.imports
-                  ++ (map (x: x.value) defs);
+                    systemd.network.networks."10-container-host0" =
+                      let
+                        veth = config.network.veth;
+                        customConfig = if veth.config.container != null then veth.config.container else { };
+                      in
+                      lib.mkIf veth.enable (
+                        lib.mkMerge [
+                          containerVdevNetwork
+                          customConfig
+                        ]
+                      );
+                  }
+                ]
+                ++ cfg.imports
+                ++ (map (x: x.value) defs);
                 prefix = [
                   "containers"
                   name
