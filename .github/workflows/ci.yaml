@@ -13,4 +13,4 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
       - name: Run flake checks
-        run: nix develop -c nix-fast-build --no-nom --no-download -j 2
+        run: nix flake check -vL

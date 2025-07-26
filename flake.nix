@@ -152,8 +152,6 @@
             };
 
           devShells.default = pkgs.mkShellNoCC {
-            packages = [ pkgs.nix-fast-build ];
-
             inputsFrom = [
               config.treefmt.build.devShell
               config.pre-commit.devShell
