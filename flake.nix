@@ -28,53 +28,11 @@
         inputs.treefmt-nix.flakeModule
         inputs.git-hooks.flakeModule
         ./checks.nix
+        ./tarball.nix
       ];
 
-      flake.nixosModules = rec {
+      flake.nixosModules = {
         default = import ./modules;
-        tarball = import ./tarball.nix;
-        versionFlakeFix =
-          {
-            config,
-            pkgs,
-            lib,
-            ...
-          }:
-          {
-            nix = {
-              channel.enable = false;
-              registry.nixos-nspawn.flake = inputs.self;
-              nixPath = lib.mkDefault [ "nixos-config=/etc/nixos/configuration.nix" ];
-
-              settings = {
-                extra-experimental-features = [
-                  "flakes"
-                  "nix-command"
-                ];
-              };
-            };
-
-            nixpkgs.flake = {
-              source = lib.mkDefault inputs.nixpkgs;
-              setNixPath = true;
-              setFlakeRegistry = true;
-            };
-
-            system.configurationRevision = inputs.self.shortRev or "dirty";
-
-            system.nixos = {
-              versionSuffix = lib.mkDefault ".${inputs.nixpkgs.shortRev}";
-              revision = lib.mkDefault (inputs.nixpkgs.rev or inputs.nixpkgs.shortRev);
-            };
-
-            environment.systemPackages = [
-              # Needed for flakes to fetch git revisions
-              pkgs.git
-            ];
-
-            # At creation time we do not have state yet, so just default to latest.
-            system.stateVersion = lib.mkDefault config.system.nixos.release;
-          };
       };
 
       perSystem =
@@ -86,34 +44,6 @@
           ...
         }:
         {
-          packages.tarball =
-            let
-              nixosSystem = pkgs.nixos [
-                inputs.self.nixosModules.versionFlakeFix
-                inputs.self.nixosModules.tarball
-                (
-                  # Generates a configuration.nix so nixos-rebuild works
-                  { modulesPath, ... }:
-                  {
-                    imports = [ "${modulesPath}/profiles/clone-config.nix" ];
-                    installer.cloneConfigIncludes =
-                      let
-                        selfFlakeRef = ''(builtins.getFlake "nixos-nspawn")'';
-                      in
-                      lib.mkForce [
-                        "${selfFlakeRef}.nixosModules.versionFlakeFix"
-                        "${selfFlakeRef}.nixosModules.tarball"
-                      ];
-                  }
-                )
-              ];
-            in
-            nixosSystem.config.system.build.tarball
-            // {
-              meta.description = "NixOS nspawn tarball for ${system} - ${pkgs.stdenv.hostPlatform.linux-kernel.name}";
-              inherit (nixosSystem) config;
-            };
-
           packages.docs =
             let
               optionsMd =
