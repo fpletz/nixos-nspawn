@@ -72,10 +72,9 @@
               nativeBuildInputs = [ pkgs.mdbook ];
 
               buildPhase = ''
-                cd docs
-                cp ../README.md src/README.md
-                ln -sf ${optionsMd} src/options.md
-                mdbook build -d $out
+                ln -sf $PWD/README.md docs/src/README.md
+                ln -sf ${optionsMd} docs/src/options.md
+                mdbook build -d $out docs
               '';
             };
 
