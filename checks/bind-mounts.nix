@@ -51,6 +51,7 @@
           };
           services.nextcloud = {
             enable = true;
+            package = pkgs.nextcloud31;
             hostName = "test.local";
             config = {
               adminpassFile = "/srv/www/index.html";
