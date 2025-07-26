@@ -6,7 +6,7 @@
       recommendedProxySettings = true;
       virtualHosts."default".locations."/".proxyPass = "http://backend";
     };
-    nixos-nspawn.containers = {
+    virtualisation.nspawn.containers = {
       backend = {
         config = {
           networking.firewall.allowedTCPPorts = [ 80 ];

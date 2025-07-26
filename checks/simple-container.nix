@@ -1,7 +1,7 @@
 { ... }:
 {
   nodes.host = {
-    nixos-nspawn.containers = {
+    virtualisation.nspawn.containers = {
       test.config = {
         networking.hostName = "test-container";
       };

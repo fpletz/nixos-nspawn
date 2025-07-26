@@ -8,7 +8,7 @@
       "/srv/pgsql".d = { };
       "/srv/nextcloud".d = { };
     };
-    nixos-nspawn.containers = {
+    virtualisation.nspawn.containers = {
       database = {
         binds = {
           "/var/lib/postgresql" = {

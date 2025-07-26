@@ -1,15 +1,16 @@
 { pkgs, inputs, ... }:
 {
   nodes.host = {
-    nixos-nspawn.containers = {
+    virtualisation.nspawn.containers = {
       test.path =
         (inputs.nixpkgs.lib.nixosSystem {
           inherit (pkgs) system;
           modules = [
-            inputs.self.nixosModules.container
+            inputs.self.nixosModules.default
             (
               { config, ... }:
               {
+                virtualisation.nspawn.isContainer = true;
                 networking.hostName = "test-container";
                 # silence warning
                 system.stateVersion = config.system.nixos.release;

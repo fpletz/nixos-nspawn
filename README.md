@@ -65,13 +65,13 @@ Simple container called `mycontainer` running a plain NixOS instance with `htop`
   # import the module on the host
   imports = [
     # with flakes
-    inputs.nixos-nspawn.nixosModules.host
+    inputs.nixos-nspawn.nixosModules.default
     # OR
     # without flakes
-    "${builtins.fetchTarball "https://github.com/fpletz/nixos-nspawn/archive/main.tar.gz"}/host.nix"
+    "${builtins.fetchTarball "https://github.com/fpletz/nixos-nspawn/archive/main.tar.gz"}/modules"
   ];
 
-  nixos-nspawn.containers = {
+  virtualisation.nspawn.containers = {
     mycontainer.config = { pkgs,... }: {
       environment.systemPackages = [ pkgs.htop ];
     };
@@ -95,7 +95,7 @@ to a container named `backend` with another nginx instance.
     virtualHosts."_".locations."/".proxyPass = "http://backend";
   };
 
-  nixos-nspawn.containers = {
+  virtualisation.nspawn.containers = {
     backend = {
       config = {
         networking.firewall.allowedTCPPorts = [ 80 ];
@@ -115,7 +115,7 @@ Static network configuration is also possible:
 
 ```nix
 {
-  nixos-nspawn.containers = {
+  virtualisation.nspawn.containers = {
     testcontainer = {
       config = { };
       network.veth.config = {

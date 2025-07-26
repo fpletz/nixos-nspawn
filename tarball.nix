@@ -11,8 +11,10 @@ in
 {
   imports = [
     "${modulesPath}/image/file-options.nix"
-    ./container.nix
+    ./modules
   ];
+
+  virtualisation.nspawn.isContainer = true;
 
   # relevant parts from nixpkgs/nixos/modules/virtualisation/lxc-container.nix
 

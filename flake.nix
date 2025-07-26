@@ -31,9 +31,7 @@
       ];
 
       flake.nixosModules = rec {
-        default = host;
-        host = import ./host.nix;
-        container = import ./container.nix;
+        default = import ./modules;
         tarball = import ./tarball.nix;
         versionFlakeFix =
           {
@@ -123,14 +121,14 @@
                   inherit
                     (inputs.nixpkgs.lib.nixosSystem {
                       inherit (pkgs) system;
-                      modules = [ inputs.self.nixosModules.host ];
+                      modules = [ inputs.self.nixosModules.default ];
                     })
                     options
                     ;
                   documentType = "none";
                   transformOptions =
                     opt:
-                    if lib.hasPrefix "nixos-nspawn" opt.name then
+                    if lib.hasPrefix "virtualisation.nspawn" opt.name then
                       opt // { declarations = [ ]; }
                     else
                       { visible = false; };

@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.nixos-nspawn;
+  cfg = config.virtualisation.nspawn;
 
   containerVdevNetwork = {
     matchConfig = {
@@ -92,10 +92,11 @@ let
                 modules = [
                   ./container.nix
                   {
+                    virtualisation.nspawn.isContainer = true;
                     networking.hostName = lib.mkDefault name;
                     nixpkgs.hostPlatform = lib.mkDefault pkgs.system;
 
-                    networking.firewall.interfaces."host0" = {
+                    networking.firewall.interfaces."host0" = lib.mkIf config.network.veth.enable {
                       allowedTCPPorts = [
                         5353 # MDNS
                       ];
@@ -251,7 +252,7 @@ let
 in
 {
   options = {
-    nixos-nspawn = {
+    virtualisation.nspawn = {
       containers = lib.mkOption {
         type = lib.types.attrsOf containerModule;
         default = { };
@@ -368,7 +369,7 @@ in
             BindReadOnly = bindsToList { readOnly = true; };
           };
         networkConfig = {
-          # XXX: Do want want to support host networking?
+          # XXX: Do we want to support host networking?
           Private = true;
           VirtualEthernet = containerCfg.network.veth.enable;
           Zone =
@@ -396,35 +397,5 @@ in
     systemd.targets.machines.wants = lib.mapAttrsToList (name: _: "systemd-nspawn@${name}.service") (
       lib.filterAttrs (_n: c: c.autoStart) cfg.containers
     );
-
-    # XXX: This is basically a copy of upstream's systemd-nspawn@.service for experimentation
-    # systemd.services = lib.flip lib.mapAttrs' cfg.containers (
-    #   name: conf:
-    #   lib.nameValuePair "nixos-nspawn-${name}" {
-    #     description = "NixOS nspawn container ${name}";
-    #     partOf = [ "machines.target" ];
-    #     before = [ "machines.target" ];
-    #     after = [ "network.target" ];
-    #     wantedBy = [ "machines.target" ];
-    #     unitConfig = {
-    #       RequiresMountsFor = "/var/lib/machines/${name}";
-    #     };
-    #     serviceConfig = {
-    #       ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p /var/lib/machines/${name}";
-    #       ExecStart = "${pkgs.systemd}/bin/systemd-nspawn --quiet --keep-unit --settings=override --machine=${name}";
-    #       KillMode = "mixed";
-    #       Type = "notify";
-    #       RestartForceExitStatus = 133;
-    #       SuccessExitStatus = 133;
-    #       Slice = "machine.slice";
-    #       Delegate = true;
-    #       DelegateSubgroup = "supervisor";
-    #       TasksMax = 16384;
-    #       WatchdogSec = "3min";
-    #       DevicePolicy = "closed";
-    #       DeviceAllow = [ "char-pts rw" ];
-    #     };
-    #   }
-    # );
   };
 }

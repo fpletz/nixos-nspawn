@@ -4,7 +4,7 @@ let
     { pkgs, config, ... }:
     {
       imports = [
-        inputs.self.nixosModules.host
+        inputs.self.nixosModules.default
       ];
 
       # silence warning
@@ -14,7 +14,7 @@ let
       environment.systemPackages = [ pkgs.tcpdump ];
 
       # use this test module in the containers recursively
-      nixos-nspawn = {
+      virtualisation.nspawn = {
         imports = [
           testModule
         ];
