@@ -73,6 +73,17 @@ let
           example = false;
         };
 
+        restartIfChanged = lib.mkOption {
+          description = ''
+            Whether to restart the container if the configuration changes. Note
+            that this will cause the whole container to restart, even if only
+            a subset of it only changed.
+          '';
+          type = lib.types.bool;
+          default = true;
+          example = false;
+        };
+
         config = lib.mkOption {
           description = ''
             A specification of the desired configuration of this
@@ -341,6 +352,8 @@ in
           LinkJournal = "try-host";
           # NixOS config takes care of the timezone
           Timezone = "off";
+          # Trigger an orderly shutdown when unit is stopped
+          KillSignal = "SIGRTMIN+3";
         };
         filesConfig =
           let
@@ -397,5 +410,14 @@ in
     systemd.targets.machines.wants = lib.mapAttrsToList (name: _: "systemd-nspawn@${name}.service") (
       lib.filterAttrs (_n: c: c.autoStart) cfg.containers
     );
+
+    # Restart containers if configuration path changes
+    systemd.services = lib.mapAttrs' (
+      name: c:
+      lib.nameValuePair "systemd-nspawn@${name}" {
+        overrideStrategy = "asDropin";
+        restartTriggers = [ c.path ];
+      }
+    ) (lib.filterAttrs (_n: c: c.restartIfChanged) cfg.containers);
   };
 }
