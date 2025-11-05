@@ -4,7 +4,7 @@
     virtualisation.nspawn.containers = {
       test.path =
         (inputs.nixpkgs.lib.nixosSystem {
-          inherit (pkgs) system;
+          inherit (pkgs.stdenv.hostPlatform) system;
           modules = [
             inputs.self.nixosModules.default
             (

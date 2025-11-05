@@ -50,7 +50,7 @@
                 (pkgs.nixosOptionsDoc {
                   inherit
                     (inputs.nixpkgs.lib.nixosSystem {
-                      inherit (pkgs) system;
+                      inherit system;
                       modules = [ inputs.self.nixosModules.default ];
                     })
                     options

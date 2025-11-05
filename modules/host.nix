@@ -105,7 +105,7 @@ let
                   {
                     virtualisation.nspawn.isContainer = true;
                     networking.hostName = lib.mkDefault name;
-                    nixpkgs.hostPlatform = lib.mkDefault pkgs.system;
+                    nixpkgs.hostPlatform = lib.mkDefault pkgs.stdenv.hostPlatform;
 
                     networking.firewall.interfaces."host0" = lib.mkIf config.network.veth.enable {
                       allowedTCPPorts = [
