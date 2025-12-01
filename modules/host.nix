@@ -298,18 +298,36 @@ in
   };
 
   config = lib.mkIf (lib.length (lib.attrNames cfg.containers) > 0) {
-    networking = {
-      useNetworkd = true;
-      firewall.interfaces = lib.genAttrs [ "ve-+" "vz-+" ] (_: {
-        allowedTCPPorts = [
-          5353 # MDNS
-        ];
-        allowedUDPPorts = [
-          67 # DHCP
-          5353 # MDNS
-        ];
-      });
-    };
+    networking =
+      let
+        fwBackend = config.networking.firewall.backend;
+      in
+      {
+        useNetworkd = true;
+        firewall.interfaces =
+          lib.genAttrs
+            (
+              if fwBackend == "nftables" then
+                [
+                  "ve-*"
+                  "vz-*"
+                ]
+              else
+                [
+                  "ve-+"
+                  "vz-+"
+                ]
+            )
+            (_: {
+              allowedTCPPorts = [
+                5353 # MDNS
+              ];
+              allowedUDPPorts = [
+                67 # DHCP
+                5353 # MDNS
+              ];
+            });
+      };
 
     systemd.network.networks = lib.flip lib.mapAttrs' cfg.containers (
       name: containerCfg:
