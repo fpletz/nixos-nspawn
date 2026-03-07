@@ -18,7 +18,6 @@
     };
 
     system = {
-      rebuild.enableNg = true;
       tools.nixos-option.enable = false;
     };
 
